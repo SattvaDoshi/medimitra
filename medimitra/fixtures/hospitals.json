@@ -1,0 +1,30 @@
+[
+  {
+    "id": "1",
+    "name": "Civil Hospital Nabha",
+    "type": "government",
+    "address": "Civil Lines, Nabha, Punjab",
+    "phone": "+91-175-2230123",
+    "latitude": 30.3780,
+    "longitude": 76.1460,
+    "services": ["Emergency", "General Medicine", "Pediatrics", "Gynecology"],
+    "beds": 150,
+    "ambulanceAvailable": true,
+    "rating": 4.2,
+    "timings": "24/7"
+  },
+  {
+    "id": "2",
+    "name": "Max Hospital Nabha",
+    "type": "private",
+    "address": "Mall Road, Nabha, Punjab",
+    "phone": "+91-175-2230456",
+    "latitude": 30.3720,
+    "longitude": 76.1420,
+    "services": ["ICU", "Cardiology", "Orthopedics", "Neurology"],
+    "beds": 100,
+    "ambulanceAvailable": true,
+    "rating": 4.8,
+    "timings": "24/7"
+  }
+]

@@ -1,0 +1,44 @@
+[
+  {
+    "id": "1",
+    "name": "Dr. Rajesh Sharma",
+    "specialty": "General Medicine",
+    "qualification": "MBBS, MD",
+    "experience": 15,
+    "hospitalId": "1",
+    "phone": "+91-9876543201",
+    "consultationFee": 500,
+    "languages": ["English", "Hindi", "Punjabi"],
+    "availability": {
+      "monday": ["9:00", "17:00"],
+      "tuesday": ["9:00", "17:00"],
+      "wednesday": ["9:00", "17:00"],
+      "thursday": ["9:00", "17:00"],
+      "friday": ["9:00", "17:00"],
+      "saturday": ["9:00", "13:00"]
+    },
+    "rating": 4.5,
+    "totalConsultations": 2500
+  },
+  {
+    "id": "2",
+    "name": "Dr. Priya Patel",
+    "specialty": "Pediatrics",
+    "qualification": "MBBS, MD (Pediatrics)",
+    "experience": 12,
+    "hospitalId": "2",
+    "phone": "+91-9876543202",
+    "consultationFee": 600,
+    "languages": ["English", "Hindi", "Gujarati"],
+    "availability": {
+      "monday": ["10:00", "18:00"],
+      "tuesday": ["10:00", "18:00"],
+      "wednesday": ["10:00", "18:00"],
+      "thursday": ["10:00", "18:00"],
+      "friday": ["10:00", "18:00"],
+      "saturday": ["10:00", "14:00"]
+    },
+    "rating": 4.8,
+    "totalConsultations": 1800
+  }
+]

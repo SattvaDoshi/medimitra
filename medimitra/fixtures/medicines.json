@@ -1,0 +1,32 @@
+[
+  {
+    "id": "m1",
+    "name": "Paracetamol",
+    "genericName": "Paracetamol",
+    "category": "Analgesic",
+    "commonBrands": ["Crocin", "Dolo-650", "Panadol"],
+    "dosages": ["500mg", "650mg", "1000mg"],
+    "uses": ["Fever", "Headache", "Body pain"],
+    "sideEffects": ["Nausea", "Liver damage (overdose)"]
+  },
+  {
+    "id": "m2",
+    "name": "Amoxicillin",
+    "genericName": "Amoxicillin",
+    "category": "Antibiotic",
+    "commonBrands": ["Novamox", "Amoxil"],
+    "dosages": ["250mg", "500mg"],
+    "uses": ["Bacterial infections", "Respiratory infections"],
+    "sideEffects": ["Diarrhea", "Allergic reactions"]
+  },
+  {
+    "id": "m3",
+    "name": "Cetirizine",
+    "genericName": "Cetirizine",
+    "category": "Antihistamine",
+    "commonBrands": ["Zyrtec", "Alerid"],
+    "dosages": ["5mg", "10mg"],
+    "uses": ["Allergies", "Itching", "Runny nose"],
+    "sideEffects": ["Drowsiness", "Dry mouth"]
+  }
+]

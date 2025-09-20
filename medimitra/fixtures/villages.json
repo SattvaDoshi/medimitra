@@ -1,0 +1,52 @@
+[
+  {
+    "id": "1",
+    "name": "Nabha",
+    "district": "Patiala",
+    "state": "Punjab",
+    "latitude": 30.3752,
+    "longitude": 76.1434,
+    "population": 67000,
+    "type": "town"
+  },
+  {
+    "id": "2",
+    "name": "Bhadson",
+    "district": "Patiala",
+    "state": "Punjab",
+    "latitude": 30.3500,
+    "longitude": 76.1200,
+    "population": 3500,
+    "type": "village"
+  },
+  {
+    "id": "3",
+    "name": "Lehra",
+    "district": "Patiala",
+    "state": "Punjab",
+    "latitude": 30.4000,
+    "longitude": 76.1600,
+    "population": 4200,
+    "type": "village"
+  },
+  {
+    "id": "4",
+    "name": "Narur",
+    "district": "Patiala",
+    "state": "Punjab",
+    "latitude": 30.3200,
+    "longitude": 76.1800,
+    "population": 2800,
+    "type": "village"
+  },
+  {
+    "id": "5",
+    "name": "Samaspur",
+    "district": "Patiala",
+    "state": "Punjab",
+    "latitude": 30.3900,
+    "longitude": 76.1100,
+    "population": 3200,
+    "type": "village"
+  }
+]

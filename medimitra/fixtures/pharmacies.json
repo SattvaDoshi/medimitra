@@ -1,0 +1,66 @@
+[
+  {
+    "id": "1",
+    "name": "Sharma Medical Store",
+    "address": "Main Market, Nabha, Punjab",
+    "phone": "+91-9876543210",
+    "latitude": 30.3752,
+    "longitude": 76.1434,
+    "deliveryAvailable": true,
+    "timings": "9:00 AM - 9:00 PM",
+    "medicines": [
+      {
+        "id": "m1",
+        "name": "Paracetamol 500mg",
+        "genericName": "Paracetamol",
+        "brand": "Crocin",
+        "category": "Analgesic",
+        "price": 25,
+        "stock": 150,
+        "dosage": "500mg"
+      },
+      {
+        "id": "m2",
+        "name": "Amoxicillin 250mg",
+        "genericName": "Amoxicillin",
+        "brand": "Novamox",
+        "category": "Antibiotic",
+        "price": 120,
+        "stock": 80,
+        "dosage": "250mg"
+      }
+    ]
+  },
+  {
+    "id": "2",
+    "name": "Apollo Pharmacy",
+    "address": "Civil Lines, Nabha, Punjab",
+    "phone": "+91-9876543211",
+    "latitude": 30.3800,
+    "longitude": 76.1450,
+    "deliveryAvailable": true,
+    "timings": "8:00 AM - 10:00 PM",
+    "medicines": [
+      {
+        "id": "m1",
+        "name": "Paracetamol 500mg",
+        "genericName": "Paracetamol",
+        "brand": "Dolo-650",
+        "category": "Analgesic",
+        "price": 22,
+        "stock": 200,
+        "dosage": "650mg"
+      },
+      {
+        "id": "m3",
+        "name": "Cetirizine 10mg",
+        "genericName": "Cetirizine",
+        "brand": "Zyrtec",
+        "category": "Antihistamine",
+        "price": 45,
+        "stock": 120,
+        "dosage": "10mg"
+      }
+    ]
+  }
+]

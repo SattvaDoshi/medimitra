@@ -1,0 +1,64 @@
+[
+  {
+    "id": "1",
+    "name": "Kamal Mishra",
+    "age": 45,
+    "gender": "male",
+    "phone": "+91-9876543210",
+    "village": "Nabha",
+    "medicalHistory": ["Diabetes", "Hypertension"],
+    "lastVisit": "2024-01-15",
+    "status": "active",
+    "avatarSeed": "kamal123",
+    "records": [
+      {
+        "id": "r1",
+        "date": "2024-01-15",
+        "doctorId": "1",
+        "diagnosis": "Routine Diabetes Check",
+        "prescription": "Metformin 500mg twice daily",
+        "voicePrescription": "voice_prescription_r1.mp3",
+        "type": "video"
+      }
+    ],
+    "vaccinations": [
+      {
+        "name": "COVID-19",
+        "date": "2023-10-15",
+        "dose": "Booster",
+        "nextDue": "2024-10-15"
+      }
+    ]
+  },
+  {
+    "id": "2",
+    "name": "Sunita Devi",
+    "age": 38,
+    "gender": "female",
+    "phone": "+91-9876543211",
+    "village": "Bhadson",
+    "medicalHistory": ["Anemia"],
+    "lastVisit": "2024-01-10",
+    "status": "active",
+    "avatarSeed": "sunita456",
+    "records": [
+      {
+        "id": "r2",
+        "date": "2024-01-10",
+        "doctorId": "2",
+        "diagnosis": "Iron deficiency anemia",
+        "prescription": "Iron tablets 100mg daily",
+        "voicePrescription": "voice_prescription_r2.mp3",
+        "type": "audio"
+      }
+    ],
+    "vaccinations": [
+      {
+        "name": "Tetanus",
+        "date": "2023-08-20",
+        "dose": "1",
+        "nextDue": "2024-08-20"
+      }
+    ]
+  }
+]
