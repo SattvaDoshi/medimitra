@@ -1,0 +1,65 @@
+{
+  "common": {
+    "welcome": "Welcome",
+    "continue": "Continue",
+    "back": "Back",
+    "next": "Next",
+    "search": "Search",
+    "loading": "Loading...",
+    "emergency": "Emergency",
+    "call": "Call Now",
+    "book": "Book Now",
+    "find": "Find",
+    "view": "View",
+    "upload": "Upload"
+  },
+  "landing": {
+    "title": "MediMitra",
+    "subtitle": "Healthcare at Your Doorstep",
+    "tagline": "Consult Doctors Anytime, Anywhere",
+    "description": "Get quality healthcare from the comfort of your home. Connect with doctors, find medicines, and manage your health records.",
+    "cta": "Start Consultation",
+    "features": {
+      "video": "Video Consultations",
+      "offline": "Works Offline",
+      "hospital": "Nearest Hospital",
+      "medicine": "Medicine Finder",
+      "ai": "AI Health Assistant"
+    }
+  },
+  "dashboard": {
+    "greeting": "Hello",
+    "quickAccess": "Quick Access",
+    "services": {
+      "consultation": "Doctor Consultation",
+      "medicine": "Medicine & Pharmacy",
+      "records": "Health Records",
+      "ai": "AI Symptom Checker",
+      "hospital": "Nearest Hospital",
+      "routes": "Safe Route Finder"
+    }
+  },
+  "consultation": {
+    "title": "Doctor Consultation",
+    "book": "Book Appointment",
+    "emergency": "Emergency Call",
+    "specialists": "Find Specialists",
+    "video": "Video Call",
+    "voice": "Voice Call"
+  },
+  "medicine": {
+    "title": "Medicine & Pharmacy",
+    "search": "Search Medicine",
+    "nearest": "Nearest Pharmacy",
+    "cheapest": "Cheapest Price",
+    "delivery": "Home Delivery",
+    "availability": "Check Availability"
+  },
+  "health": {
+    "records": "Health Records",
+    "history": "Medical History",
+    "prescriptions": "Prescriptions",
+    "reports": "Lab Reports",
+    "vaccinations": "Vaccinations"
+  }
+}

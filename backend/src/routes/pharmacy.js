@@ -110,11 +110,13 @@ router.post('/', authenticateToken, isPharmacyOwner, validatePharmacy, handleVal
 // @desc    Search pharmacies by location
 // @access  Public
 router.get('/search', searchLimiter, [
-  query('lat')
+   query('lat')
+    .optional()
     .isFloat({ min: -90, max: 90 })
     .withMessage('Latitude must be a valid number between -90 and 90'),
   
   query('lng')
+    .optional()
     .isFloat({ min: -180, max: 180 })
     .withMessage('Longitude must be a valid number between -180 and 180'),
   
@@ -132,11 +134,32 @@ router.get('/search', searchLimiter, [
   query('pincode')
     .optional()
     .matches(/^[0-9]{6}$/)
-    .withMessage('Please provide a valid 6-digit pincode')
-], handleValidationErrors, asyncHandler(async (req, res) => {
-  const { lat, lng, radius = 10, city, pincode, limit = 20, page = 1 } = req.query;
+    .withMessage('Please provide a valid 6-digit pincode'),
 
-  let query = { isActive: true };
+  query('street')
+    .optional()
+    .trim()
+    .isLength({ min: 2 })
+    .withMessage('Street must be at least 2 characters'),
+
+], handleValidationErrors, asyncHandler(async (req, res) => {
+  const { lat, lng, radius = 10, city, pincode, street, limit = 20, page = 1 } = req.query;
+
+  // Custom validation: if one coordinate is provided, both must be provided
+  if ((lat && !lng) || (!lat && lng)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors: [{
+        type: 'field',
+        msg: 'Both latitude and longitude must be provided together',
+        path: 'coordinates',
+        location: 'query'
+      }]
+    });
+  }
+
+  let searchQuery = { isActive: true };
   let sort = {};
 
   if (lat && lng) {
@@ -202,22 +225,26 @@ router.get('/search', searchLimiter, [
 
   // Text-based search
   if (city) {
-    query['location.address.city'] = new RegExp(city, 'i');
+    searchQuery['location.address.city'] = new RegExp(city, 'i');
   }
 
   if (pincode) {
-    query['location.address.pincode'] = pincode;
+    searchQuery['location.address.pincode'] = pincode;
+  }
+
+  if (street) {
+    searchQuery['location.address.street'] = new RegExp(street, 'i');
   }
 
   const skip = (page - 1) * limit;
-  const pharmacies = await Pharmacy.find(query)
+  const pharmacies = await Pharmacy.find(searchQuery)
     .populate('owner', 'name email')
     .select('name license_number location contact operating_hours services rating')
     .sort(sort)
     .limit(parseInt(limit))
     .skip(skip);
 
-  const total = await Pharmacy.countDocuments(query);
+  const total = await Pharmacy.countDocuments(searchQuery);
 
   res.status(200).json({
     success: true,
@@ -488,6 +515,194 @@ router.get('/my/dashboard', authenticateToken, isPharmacyOwner, asyncHandler(asy
         lowStockItems,
         expiringSoonItems
       }
+    }
+  });
+}));
+
+// @route   GET /api/pharmacy/:id/find-medicine
+// @desc    Find nearest pharmacy with specific medicine if not available in current pharmacy
+// @access  Public
+router.get('/:id/find-medicine', [
+  query('medicine')
+    .notEmpty()
+    .trim()
+    .isLength({ min: 2 })
+    .withMessage('Medicine name must be at least 2 characters'),
+  
+  query('radius')
+    .optional()
+    .isFloat({ min: 0.1, max: 50 })
+    .withMessage('Radius must be between 0.1 and 50 km')
+], handleValidationErrors, asyncHandler(async (req, res) => {
+  const { medicine, radius = 10 } = req.query;
+  const pharmacyId = req.params.id;
+
+  // First, check if the medicine is available in the current pharmacy
+  const currentPharmacy = await Pharmacy.findById(pharmacyId);
+  if (!currentPharmacy) {
+    return res.status(404).json({
+      success: false,
+      message: 'Pharmacy not found'
+    });
+  }
+
+  // Check if medicine exists in current pharmacy
+  const medicineInCurrentPharmacy = await Medicine.findOne({
+    pharmacy: pharmacyId,
+    isActive: true,
+    $text: { $search: medicine },
+    'stock.current_quantity': { $gt: 0 },
+    expiry_date: { $gt: new Date() }
+  });
+
+  if (medicineInCurrentPharmacy) {
+    return res.status(200).json({
+      success: true,
+      message: 'Medicine available in current pharmacy',
+      data: {
+        available: true,
+        pharmacy: {
+          _id: currentPharmacy._id,
+          name: currentPharmacy.name,
+          location: currentPharmacy.location,
+          contact: currentPharmacy.contact
+        },
+        medicine: {
+          _id: medicineInCurrentPharmacy._id,
+          name: medicineInCurrentPharmacy.name,
+          brand: medicineInCurrentPharmacy.brand,
+          selling_price: medicineInCurrentPharmacy.selling_price,
+          stock: medicineInCurrentPharmacy.stock,
+          prescription_required: medicineInCurrentPharmacy.prescription_required
+        },
+        distance: 0
+      }
+    });
+  }
+
+  // If not available, find nearest pharmacies with the medicine
+  const pharmaciesWithMedicine = await Pharmacy.aggregate([
+    // First, find pharmacies that have the medicine
+    {
+      $lookup: {
+        from: 'medicines',
+        let: { pharmacyId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: { $eq: ['$pharmacy', '$$pharmacyId'] },
+              isActive: true,
+              $text: { $search: medicine },
+              'stock.current_quantity': { $gt: 0 },
+              expiry_date: { $gt: new Date() }
+            }
+          },
+          {
+            $project: {
+              _id: 1,
+              name: 1,
+              brand: 1,
+              selling_price: 1,
+              stock: 1,
+              prescription_required: 1,
+              score: { $meta: 'textScore' }
+            }
+          },
+          {
+            $sort: { score: { $meta: 'textScore' } }
+          },
+          {
+            $limit: 1
+          }
+        ],
+        as: 'available_medicines'
+      }
+    },
+    {
+      $match: {
+        _id: { $ne: currentPharmacy._id }, // Exclude current pharmacy
+        isActive: true,
+        'available_medicines.0': { $exists: true } // Only include pharmacies that have the medicine
+      }
+    }
+  ]);
+
+  // Calculate distances and filter by radius
+  const currentLat = currentPharmacy.location.coordinates[1];
+  const currentLng = currentPharmacy.location.coordinates[0];
+
+  const pharmaciesWithDistance = pharmaciesWithMedicine
+    .map(pharmacy => {
+      const pharmacyLat = pharmacy.location.coordinates[1];
+      const pharmacyLng = pharmacy.location.coordinates[0];
+      
+      // Haversine formula to calculate distance
+      const R = 6371; // Earth's radius in km
+      const dLat = (pharmacyLat - currentLat) * Math.PI / 180;
+      const dLng = (pharmacyLng - currentLng) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(currentLat * Math.PI / 180) * Math.cos(pharmacyLat * Math.PI / 180) *
+        Math.sin(dLng/2) * Math.sin(dLng/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const distance = R * c;
+      
+      return {
+        ...pharmacy,
+        distance: distance
+      };
+    })
+    .filter(pharmacy => pharmacy.distance <= parseFloat(radius))
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, 5); // Take top 5 nearest
+
+  if (pharmaciesWithDistance.length === 0) {
+    return res.status(404).json({
+      success: false,
+      message: `Medicine "${medicine}" not found in any pharmacy within ${radius}km radius`,
+      data: {
+        available: false,
+        searched_medicine: medicine,
+        search_radius: radius,
+        current_pharmacy: {
+          _id: currentPharmacy._id,
+          name: currentPharmacy.name,
+          location: currentPharmacy.location
+        }
+      }
+    });
+  }
+
+  // Return the nearest pharmacy with the medicine
+  const nearestPharmacy = pharmaciesWithDistance[0];
+
+  res.status(200).json({
+    success: true,
+    message: `Medicine found in nearest pharmacy`,
+    data: {
+      available: false,
+      searched_medicine: medicine,
+      current_pharmacy: {
+        _id: currentPharmacy._id,
+        name: currentPharmacy.name,
+        location: currentPharmacy.location
+      },
+      nearest_pharmacy: {
+        _id: nearestPharmacy._id,
+        name: nearestPharmacy.name,
+        location: nearestPharmacy.location,
+        contact: nearestPharmacy.contact,
+        operating_hours: nearestPharmacy.operating_hours,
+        services: nearestPharmacy.services,
+        rating: nearestPharmacy.rating,
+        distance: Math.round(nearestPharmacy.distance * 100) / 100, // Round to 2 decimal places
+        medicine: nearestPharmacy.available_medicines[0]
+      },
+      alternatives: pharmaciesWithDistance.slice(1, 3).map(pharmacy => ({
+        _id: pharmacy._id,
+        name: pharmacy.name,
+        distance: Math.round(pharmacy.distance * 100) / 100,
+        medicine: pharmacy.available_medicines[0]
+      }))
     }
   });
 }));

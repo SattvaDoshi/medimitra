@@ -187,7 +187,7 @@ router.get('/', [
   }
 
   if (available_only === 'true') {
-    medicineQuery.stock_quantity = { $gt: 0 };
+    medicineQuery['stock.current_quantity'] = { $gt: 0 };
   }
 
   const skip = (parseInt(page) - 1) * parseInt(limit);

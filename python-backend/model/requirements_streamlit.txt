@@ -1,0 +1,41 @@
+# Streamlit AI Health Agent Requirements
+# Core Streamlit framework
+streamlit>=1.28.0
+
+# Google AI and APIs
+google-generativeai>=0.3.0
+
+# Speech and Audio Processing
+speechrecognition>=3.10.0
+gTTS>=2.4.0
+pyaudio>=0.2.11
+pydub>=0.25.1
+
+# Environment and Configuration
+python-dotenv>=1.0.0
+
+# Data Processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Web and HTTP
+requests>=2.31.0
+
+# Geographic and Location Services
+geopy>=2.3.0
+
+# Audio Processing (Alternative)
+soundfile>=0.12.1
+
+# Optional: For better audio handling
+pygame>=2.5.0
+
+# Optional: For advanced speech recognition
+pocketsphinx>=5.0.0
+
+# Optional: For audio visualization
+matplotlib>=3.7.0
+plotly>=5.15.0
+
+# Development and Testing
+pytest>=7.4.0

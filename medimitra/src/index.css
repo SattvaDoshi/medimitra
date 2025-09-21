@@ -1,0 +1,329 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* MediMitra App Design System - Farmer-friendly, Accessible, Multilingual */
+
+@layer base {
+  :root {
+    /* Core Brand Colors - Trustworthy Healthcare Blues & Greens */
+    --background: 210 50% 98%;
+    --foreground: 215 25% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
+
+    /* Primary - Medical Trust Blue */
+    --primary: 212 95% 55%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 212 90% 70%;
+    --primary-dark: 212 100% 45%;
+
+    /* Secondary - Healing Green */
+    --secondary: 145 60% 50%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-light: 145 55% 65%;
+
+    /* Accent - Warm Orange for CTAs */
+    --accent: 25 95% 60%;
+    --accent-foreground: 0 0% 100%;
+    --accent-light: 25 90% 75%;
+
+    /* Status Colors */
+    --success: 145 70% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 45 95% 55%;
+    --warning-foreground: 0 0% 100%;
+    --destructive: 0 85% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Neutral Colors */
+    --muted: 210 30% 95%;
+    --muted-foreground: 215 15% 50%;
+    --border: 210 25% 90%;
+    --input: 210 25% 92%;
+    --ring: 212 95% 55%;
+
+    /* Design System Tokens */
+    --radius: 0.75rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.75rem;
+    --font-size-3xl: 2.25rem;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-light)) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--secondary-light)) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--accent-light)) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
+    --gradient-card: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(210 30% 98%) 100%);
+
+    /* Shadows */
+    --shadow-soft: 0 4px 12px hsl(var(--primary) / 0.1);
+    --shadow-medium: 0 8px 25px hsl(var(--primary) / 0.15);
+    --shadow-strong: 0 12px 35px hsl(var(--primary) / 0.2);
+    --shadow-glow: 0 0 20px hsl(var(--accent) / 0.3);
+
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* Dark mode for rural areas with poor lighting */
+    --background: 215 25% 8%;
+    --foreground: 210 50% 98%;
+    
+    --card: 215 25% 12%;
+    --card-foreground: 210 50% 98%;
+    
+    --popover: 215 25% 12%;
+    --popover-foreground: 210 50% 98%;
+    
+    --primary: 212 85% 70%;
+    --primary-foreground: 215 25% 8%;
+    --primary-light: 212 80% 80%;
+    --primary-dark: 212 90% 60%;
+    
+    --secondary: 145 50% 60%;
+    --secondary-foreground: 215 25% 8%;
+    --secondary-light: 145 45% 70%;
+    
+    --accent: 25 85% 70%;
+    --accent-foreground: 215 25% 8%;
+    --accent-light: 25 80% 80%;
+    
+    --success: 145 65% 55%;
+    --success-foreground: 215 25% 8%;
+    --warning: 45 90% 65%;
+    --warning-foreground: 215 25% 8%;
+    --destructive: 0 80% 70%;
+    --destructive-foreground: 215 25% 8%;
+    
+    --muted: 215 20% 15%;
+    --muted-foreground: 215 15% 70%;
+    --border: 215 20% 20%;
+    --input: 215 20% 18%;
+    --ring: 212 85% 70%;
+    
+    --gradient-card: linear-gradient(135deg, hsl(215 25% 12%) 0%, hsl(215 20% 15%) 100%);
+    
+    --sidebar-background: 215 20% 12%;
+    --sidebar-foreground: 210 50% 95%;
+    --sidebar-primary: 210 50% 98%;
+    --sidebar-primary-foreground: 215 25% 8%;
+    --sidebar-accent: 215 20% 18%;
+    --sidebar-accent-foreground: 210 50% 98%;
+    --sidebar-border: 215 20% 20%;
+    --sidebar-ring: 212 85% 70%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  /* Mobile App Base Styles */
+  html {
+    /* Disable text size adjust on iOS */
+    -webkit-text-size-adjust: 100%;
+    /* Disable tap highlight */
+    -webkit-tap-highlight-color: transparent;
+    /* Smooth scrolling for mobile */
+    scroll-behavior: smooth;
+    /* Disable user select for app-like feel */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    
+    /* Mobile App Body Optimizations */
+    overflow-x: hidden;
+    /* Safe area for mobile devices */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    /* Disable bounce scrolling on iOS */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
+  }
+
+  /* Re-enable text selection for specific elements */
+  input, textarea, [contenteditable] {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+  }
+
+  /* High contrast for accessibility */
+  .high-contrast {
+    --foreground: 0 0% 0%;
+    --background: 0 0% 100%;
+    --primary: 220 100% 30%;
+    --secondary: 120 100% 25%;
+  }
+}
+
+@layer components {
+  /* Mobile App Components */
+  .mobile-app-container {
+    @apply min-h-screen bg-background;
+    /* Handle safe areas */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  .mobile-header {
+    @apply sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60;
+    /* Account for status bar */
+    padding-top: max(env(safe-area-inset-top), 1rem);
+  }
+
+  .mobile-bottom-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border;
+    /* Account for home indicator */
+    padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+  }
+
+  /* Farmer-friendly large touch targets */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Enhanced touch targets for mobile */
+  .mobile-touch-target {
+    @apply min-h-[56px] min-w-[56px] touch-target;
+  }
+
+  /* Card patterns for medical services */
+  .service-card {
+    @apply bg-gradient-to-br from-card to-muted/30 border border-border rounded-2xl p-6 shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-medium)] transition-[var(--transition-smooth)] hover:scale-[1.02] active:scale-[0.98];
+  }
+
+  /* Hero button pattern with haptic feedback */
+  .btn-hero {
+    @apply bg-gradient-to-r from-primary to-secondary text-primary-foreground font-semibold px-8 py-4 rounded-2xl shadow-[var(--shadow-medium)] hover:shadow-[var(--shadow-strong)] transform hover:scale-105 active:scale-95 transition-[var(--transition-bounce)] mobile-touch-target;
+  }
+
+  /* Emergency button pattern */
+  .btn-emergency {
+    @apply bg-gradient-to-r from-destructive to-warning text-destructive-foreground font-bold px-6 py-3 rounded-xl shadow-[var(--shadow-glow)] animate-pulse mobile-touch-target;
+  }
+
+  /* Mobile scroll container */
+  .mobile-scroll {
+    @apply overflow-y-auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .mobile-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Multilingual text support */
+  .text-punjabi {
+    font-family: 'Noto Sans Gurmukhi', 'Arial Unicode MS', sans-serif;
+  }
+  
+  .text-hindi {
+    font-family: 'Noto Sans Devanagari', 'Arial Unicode MS', sans-serif;
+  }
+
+  /* Mobile-specific hover effects that work with touch */
+  .mobile-hover {
+    @apply transition-all duration-200 active:scale-95;
+  }
+
+  /* Status bar safe area */
+  .status-bar-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Animation Delays */
+.animation-delay-0 { animation-delay: 0ms; }
+.animation-delay-200 { animation-delay: 200ms; }
+.animation-delay-400 { animation-delay: 400ms; }
+.animation-delay-500 { animation-delay: 500ms; }
+.animation-delay-1000 { animation-delay: 1000ms; }
+.animation-delay-1200 { animation-delay: 1200ms; }
+.animation-delay-1400 { animation-delay: 1400ms; }
+.animation-delay-1500 { animation-delay: 1500ms; }
+.animation-delay-1600 { animation-delay: 1600ms; }
+
+/* Mobile Utilities */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+}
+
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top), 1rem);
+}
+
+/* Text truncation utilities */
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Mobile-specific hover effects - add story-link animation */
+.story-link {
+  @apply relative inline-block;
+}
+
+.story-link::after {
+  content: '';
+  @apply absolute w-full scale-x-0 h-0.5 bottom-0 left-0 bg-primary origin-bottom-right transition-transform duration-300;
+}
+
+.story-link:hover::after {
+  @apply scale-x-100 origin-bottom-left;
+}
+
+/* Hover scale animation */
+.hover-scale {
+  @apply transition-transform duration-200 hover:scale-105 active:scale-95;
+}
