@@ -110,7 +110,7 @@ const VoiceAssistant = () => {
 
       console.log("✅ Microphone access granted, stream created:", stream);
       console.log("🔊 Audio tracks:", stream.getAudioTracks());
-      
+
       // Test audio level detection
       try {
         console.log("🎯 Creating audio context for level monitoring...");
@@ -118,30 +118,31 @@ const VoiceAssistant = () => {
         const analyser = audioContext.createAnalyser();
         const microphone = audioContext.createMediaStreamSource(stream);
         microphone.connect(analyser);
-        
+
         analyser.fftSize = 256;
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
-        
+
         console.log("🎯 Audio context created successfully");
-        
+
         // Monitor audio levels
         const checkAudioLevel = () => {
           try {
             analyser.getByteFrequencyData(dataArray);
             const average = dataArray.reduce((a, b) => a + b) / bufferLength;
-            if (average > 5) { // Lower threshold for testing
+            if (average > 5) {
+              // Lower threshold for testing
               console.log("🎵 Audio level detected:", average);
             }
           } catch (levelError) {
             console.error("❌ Error checking audio level:", levelError);
           }
         };
-        
+
         // Check audio levels every 500ms
         console.log("🎯 Starting audio level monitoring...");
         const audioLevelInterval = setInterval(checkAudioLevel, 500);
-        
+
         // Clean up interval when call ends
         setTimeout(() => {
           if (!isCallActive) {
@@ -149,11 +150,10 @@ const VoiceAssistant = () => {
             audioContext.close();
           }
         }, 1000);
-        
       } catch (audioError) {
         console.error("❌ Error setting up audio monitoring:", audioError);
       }
-      
+
       setCurrentStream(stream);
       setIsCallActive(true);
       setIsListening(true);
@@ -161,7 +161,7 @@ const VoiceAssistant = () => {
       console.log("🎯 About to start continuous recording...");
       console.log("🎯 isCallActive will be:", true);
       console.log("🎯 Stream for recording:", stream);
-      
+
       // Start continuous recording
       try {
         console.log("🎯 Calling startContinuousRecording...");
@@ -184,19 +184,19 @@ const VoiceAssistant = () => {
   const startContinuousRecording = (stream, callActive = null) => {
     // Use passed parameter or fall back to state
     const isActive = callActive !== null ? callActive : isCallActive;
-    
+
     console.log("🎙️ startContinuousRecording called with stream:", stream);
     console.log("🎙️ callActive parameter:", callActive);
     console.log("🎙️ isCallActive state:", isCallActive);
     console.log("🎙️ Using isActive:", isActive);
-    
+
     if (!isActive) {
       console.log("❌ Call not active, returning early");
       return;
     }
 
     console.log("🎙️ Starting continuous recording with stream:", stream);
-    
+
     try {
       const recorder = new MediaRecorder(stream);
       const chunks = [];
@@ -213,15 +213,24 @@ const VoiceAssistant = () => {
       };
 
       recorder.onstop = async () => {
-      console.log("🛑 Recording stopped, processing audio chunks:", chunks.length);
-      console.log("🛑 Current isCallActive state:", isCallActive);
-      console.log("🛑 Current wsConnection state:", wsConnection?.readyState);
-      
-      // Create audio blob with WebM format (backend will convert to WAV)
-      const audioBlob = new Blob(chunks, { type: "audio/webm" });
-      console.log("📦 Created audio blob, size:", audioBlob.size, "bytes");        // Process if we have audio data and WebSocket is connected (regardless of call state)
-        if (audioBlob.size > 5000 && wsConnection && wsConnection.readyState === WebSocket.OPEN) {
-          console.log("✅ Audio blob size sufficient and WebSocket connected, processing...");
+        console.log(
+          "🛑 Recording stopped, processing audio chunks:",
+          chunks.length
+        );
+        console.log("🛑 Current isCallActive state:", isCallActive);
+        console.log("🛑 Current wsConnection state:", wsConnection?.readyState);
+
+        // Create audio blob with WebM format (backend will convert to WAV)
+        const audioBlob = new Blob(chunks, { type: "audio/webm" });
+        console.log("📦 Created audio blob, size:", audioBlob.size, "bytes"); // Process if we have audio data and WebSocket is connected (regardless of call state)
+        if (
+          audioBlob.size > 5000 &&
+          wsConnection &&
+          wsConnection.readyState === WebSocket.OPEN
+        ) {
+          console.log(
+            "✅ Audio blob size sufficient and WebSocket connected, processing..."
+          );
           const reader = new FileReader();
           reader.onloadend = () => {
             const result = reader.result;
@@ -230,19 +239,19 @@ const VoiceAssistant = () => {
               console.log("🔤 Base64 audio length:", base64Audio.length);
 
               console.log("📤 Sending audio data via WebSocket...");
-              
+
               const message = {
                 type: "voice_data", // or "audio" - backend supports both
                 audio: base64Audio,
                 language: currentLanguage,
                 continuous: true,
               };
-              
+
               console.log("📤 Message to send:", {
                 ...message,
-                audio: `[${base64Audio.length} chars of base64 audio]`
+                audio: `[${base64Audio.length} chars of base64 audio]`,
               });
-              
+
               wsConnection.send(JSON.stringify(message));
               setIsProcessing(true);
               console.log("✅ Audio data sent successfully");
@@ -251,9 +260,18 @@ const VoiceAssistant = () => {
           reader.readAsDataURL(audioBlob);
         } else {
           if (audioBlob.size <= 5000) {
-            console.log("⚠️ Audio blob too small, skipping processing. Size:", audioBlob.size);
-          } else if (!wsConnection || wsConnection.readyState !== WebSocket.OPEN) {
-            console.log("⚠️ WebSocket not available for sending audio. State:", wsConnection?.readyState);
+            console.log(
+              "⚠️ Audio blob too small, skipping processing. Size:",
+              audioBlob.size
+            );
+          } else if (
+            !wsConnection ||
+            wsConnection.readyState !== WebSocket.OPEN
+          ) {
+            console.log(
+              "⚠️ WebSocket not available for sending audio. State:",
+              wsConnection?.readyState
+            );
           }
         }
 
@@ -283,7 +301,6 @@ const VoiceAssistant = () => {
           recorder.stop();
         }
       }, 5000);
-      
     } catch (recorderError) {
       console.error("❌ Error creating MediaRecorder:", recorderError);
     }
@@ -454,7 +471,6 @@ const VoiceAssistant = () => {
           stopVoiceCall();
         }
       };
-      
     } catch (error) {
       console.error("Failed to connect:", error);
       setError("Failed to connect to voice assistant");
@@ -474,11 +490,11 @@ const VoiceAssistant = () => {
           type: "end",
         })
       );
-      
+
       // Close the connection
       wsConnection.close();
     }
-    
+
     setIsConnected(false);
     setIsListening(false);
     setIsSpeaking(false);
