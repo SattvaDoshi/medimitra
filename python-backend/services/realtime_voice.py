@@ -84,6 +84,42 @@ class RealTimeVoiceAgent:
             'greeting': await self.voice_service.get_greeting(language)
         }
     
+    async def process_text_input(self, session_id: str, text: str, language: str = "en") -> Dict[str, Any]:
+        """Process text input directly (fallback when voice isn't working)"""
+        
+        if session_id not in self.active_sessions:
+            logger.warning(f"No active session found for {session_id}")
+            return {"error": "No active session"}
+        
+        session = self.active_sessions[session_id]
+        session['last_activity'] = time.time()
+        
+        logger.info(f"💬 Processing text input: {text}")
+        
+        try:
+            # Use voice assistant to process the text directly
+            chat_response = await self.voice_service.process_text_message(text, language)
+            
+            # Convert ChatResponse to dictionary
+            result = {
+                "ai_response": chat_response.response,
+                "language": chat_response.language,
+                "requires_hospital": chat_response.requires_hospital,
+                "emergency_level": chat_response.emergency_level,
+                "session_id": session_id,
+                "timestamp": time.time()
+            }
+            
+            logger.info(f"💬 Text processing completed for session {session_id}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error processing text input: {e}")
+            return {
+                "error": f"Text processing failed: {str(e)}",
+                "session_id": session_id
+            }
+    
     async def process_audio_chunk(self, session_id: str, audio_data: bytes) -> Dict[str, Any]:
         """Process incoming audio chunk in real-time"""
         
@@ -104,39 +140,23 @@ class RealTimeVoiceAgent:
             voice_detected = self._detect_voice_activity(audio_np, session)
             
             response = {
-                'voice_detected': voice_detected,
-                'is_processing': session['processing_audio'],
-                'timestamp': time.time()
+                'voice_detected': bool(voice_detected),  # Ensure JSON serializable
+                'is_processing': bool(session['processing_audio']),  # Ensure JSON serializable
+                'timestamp': float(time.time())  # Ensure JSON serializable
             }
             
-            # If voice activity detected and we have enough audio, process it
+            # If voice activity detected, process the audio chunk directly
             if voice_detected and not session['processing_audio']:
-                session['speech_frames'].append(audio_data)
+                logger.info(f"🎤 Voice detected, processing audio chunk directly...")
+                session['processing_audio'] = True
                 
-                # Check if we should process the accumulated speech
-                if self._should_process_speech(session):
-                    session['processing_audio'] = True
-                    
-                    # Process the accumulated speech
-                    speech_result = await self._process_accumulated_speech(session_id)
-                    if speech_result:
-                        response.update(speech_result)
-                    
-                    session['processing_audio'] = False
-                    session['speech_frames'] = []
-            
-            elif not voice_detected and session['speech_frames']:
-                # End of speech detected, process if we have content
-                if len(session['speech_frames']) > 5:  # Minimum frames threshold
-                    session['processing_audio'] = True
-                    
-                    speech_result = await self._process_accumulated_speech(session_id)
-                    if speech_result:
-                        response.update(speech_result)
-                    
-                    session['processing_audio'] = False
+                # Process this audio chunk immediately
+                speech_result = await self._process_audio_chunk_directly(session_id, audio_data)
+                if speech_result:
+                    logger.info(f"🎤 Speech processing completed: {list(speech_result.keys())}")
+                    response.update(speech_result)
                 
-                session['speech_frames'] = []
+                session['processing_audio'] = False
             
             return response
             
@@ -245,6 +265,110 @@ class RealTimeVoiceAgent:
         
         return False
     
+    async def _process_audio_chunk_directly(self, session_id: str, audio_data: bytes) -> Optional[Dict]:
+        """Process a single audio chunk directly for speech recognition"""
+        
+        session = self.active_sessions[session_id]
+        
+        try:
+            logger.info(f"🎤 Processing single audio chunk: {len(audio_data)} bytes")
+            
+            # Convert to audio file for speech recognition
+            audio_file_path = await self._save_audio_to_temp_file(bytearray(audio_data))
+            
+            # Transcribe speech
+            transcription = await self.voice_service.speech_to_text(
+                audio_file_path, 
+                session['language']
+            )
+            
+            if not transcription or not transcription.strip():
+                logger.info(f"🎤 No transcription from audio chunk")
+                return None
+            
+            logger.info(f"🎤 Transcribed: {transcription}")
+            
+            # Process with AI (with timeout)
+            logger.info(f"🤖 Starting AI response generation...")
+            try:
+                ai_response = await asyncio.wait_for(
+                    self.voice_service.process_text_message(
+                        message=transcription,
+                        language=session['language'],
+                        session_id=session_id
+                    ),
+                    timeout=30.0  # 30 second timeout
+                )
+                logger.info(f"🤖 AI response generated: {ai_response.response[:100]}...")
+            except asyncio.TimeoutError:
+                logger.error(f"🤖 AI response generation timed out after 30 seconds")
+                return {
+                    'transcription': transcription,
+                    'ai_response': "I'm sorry, I'm having trouble processing your request right now. Please try again.",
+                    'audio_response': "",
+                    'emergency_level': "none", 
+                    'requires_hospital': False,
+                    'language': session['language']
+                }
+            except Exception as ai_error:
+                logger.error(f"🤖 AI response generation failed: {ai_error}")
+                return {
+                    'transcription': transcription,
+                    'ai_response': "I'm sorry, I encountered an error processing your request.",
+                    'audio_response': "",
+                    'emergency_level': "none",
+                    'requires_hospital': False, 
+                    'language': session['language']
+                }
+            
+            # Generate audio response
+            logger.info(f"🎵 Starting audio response generation...")
+            audio_response_path = None
+            try:
+                audio_response_path = await asyncio.wait_for(
+                    self.voice_service.text_to_speech(
+                        ai_response.response,
+                        session['language']
+                    ),
+                    timeout=35.0  # Increased timeout to allow for 3 retries (10s each + 6s backoff)
+                )
+                if audio_response_path:
+                    logger.info(f"🎵 Audio response generated successfully")
+                else:
+                    logger.info(f"🎵 No audio response available - continuing with text only")
+            except asyncio.TimeoutError:
+                logger.error(f"🎵 Audio response generation timed out after 35 seconds")
+                audio_response_path = None
+            except Exception as tts_error:
+                logger.error(f"🎵 Audio response generation failed: {tts_error}")
+                # Continue without audio - text response is more important
+                audio_response_path = None
+            
+            # Convert audio to base64 for streaming
+            audio_base64 = ""
+            if audio_response_path and audio_response_path is not None:
+                try:
+                    audio_base64 = await self._audio_to_base64(audio_response_path)
+                    logger.info(f"🎵 Audio converted to base64: {len(audio_base64)} chars")
+                except Exception as b64_error:
+                    logger.error(f"🎵 Audio base64 conversion failed: {b64_error}")
+                    audio_base64 = ""
+            else:
+                logger.info(f"🎵 No audio response available - continuing with text only")
+            
+            return {
+                'transcription': transcription,
+                'ai_response': ai_response.response,
+                'audio_response': audio_base64,
+                'emergency_level': ai_response.emergency_level,
+                'requires_hospital': bool(ai_response.requires_hospital),
+                'language': session['language']
+            }
+            
+        except Exception as e:
+            logger.error(f"Error processing audio chunk: {e}")
+            return None
+
     async def _process_accumulated_speech(self, session_id: str) -> Optional[Dict]:
         """Process accumulated speech frames"""
         
@@ -294,7 +418,7 @@ class RealTimeVoiceAgent:
                 'ai_response': ai_response.response,
                 'audio_response': audio_base64,
                 'emergency_level': ai_response.emergency_level,
-                'requires_hospital': ai_response.requires_hospital,
+                'requires_hospital': bool(ai_response.requires_hospital),  # Ensure JSON serializable
                 'language': session['language']
             }
             
@@ -303,25 +427,91 @@ class RealTimeVoiceAgent:
             return {'error': str(e)}
     
     async def _save_audio_to_temp_file(self, audio_data: bytearray) -> str:
-        """Save audio data to temporary WAV file"""
+        """Save audio data to temporary WAV file with proper format conversion"""
         
         import tempfile
         import os
         
-        # Create temporary file
-        temp_fd, temp_path = tempfile.mkstemp(suffix='.wav')
+        # Create temporary file for the received audio (WebM format)
+        temp_input_fd, temp_input_path = tempfile.mkstemp(suffix='.webm')
+        # Create temporary file for the converted WAV audio
+        temp_output_fd, temp_output_path = tempfile.mkstemp(suffix='.wav')
         
         try:
-            with wave.open(temp_path, 'wb') as wav_file:
-                wav_file.setnchannels(1)  # Mono
-                wav_file.setsampwidth(2)  # 2 bytes per sample (int16)
-                wav_file.setframerate(self.sample_rate)
-                wav_file.writeframes(audio_data)
+            # Write the received audio data to input file
+            with os.fdopen(temp_input_fd, 'wb') as f:
+                f.write(audio_data)
             
-            return temp_path
+            # Convert WebM to WAV using ffmpeg (if available) or fall back to direct write
+            try:
+                import subprocess
+                # Try to convert using ffmpeg
+                result = subprocess.run([
+                    'ffmpeg', '-i', temp_input_path, 
+                    '-ar', '16000',  # 16kHz sample rate
+                    '-ac', '1',      # Mono
+                    '-acodec', 'pcm_s16le',  # 16-bit PCM
+                    '-y',            # Overwrite output
+                    temp_output_path
+                ], capture_output=True, text=True, timeout=10)
+                
+                if result.returncode == 0:
+                    logger.info(f"🔄 Successfully converted audio using ffmpeg")
+                    os.close(temp_output_fd)  # Close the file descriptor
+                    return temp_output_path
+                else:
+                    logger.warning(f"⚠️ ffmpeg conversion failed: {result.stderr}")
+                    
+            except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
+                logger.warning(f"⚠️ ffmpeg not available or failed: {e}")
             
+            # Fallback: Try to write as WAV directly (may not work for WebM)
+            os.close(temp_output_fd)  # Close before writing
+            with open(temp_output_path, 'wb') as f:
+                # Write simple WAV header for 16kHz mono 16-bit PCM
+                import struct
+                sample_rate = 16000
+                num_channels = 1
+                bits_per_sample = 16
+                
+                # Calculate sizes
+                data_size = len(audio_data)
+                chunk_size = 36 + data_size
+                
+                # Write WAV header
+                f.write(b'RIFF')
+                f.write(struct.pack('<L', chunk_size))
+                f.write(b'WAVE')
+                f.write(b'fmt ')
+                f.write(struct.pack('<L', 16))  # fmt chunk size
+                f.write(struct.pack('<H', 1))   # PCM format
+                f.write(struct.pack('<H', num_channels))
+                f.write(struct.pack('<L', sample_rate))
+                f.write(struct.pack('<L', sample_rate * num_channels * bits_per_sample // 8))
+                f.write(struct.pack('<H', num_channels * bits_per_sample // 8))
+                f.write(struct.pack('<H', bits_per_sample))
+                f.write(b'data')
+                f.write(struct.pack('<L', data_size))
+                f.write(audio_data)
+                
+            logger.info(f"🔄 Created WAV file with manual header")
+            return temp_output_path
+            
+        except Exception as e:
+            logger.error(f"Error saving audio file: {e}")
+            # Clean up files
+            try:
+                os.unlink(temp_input_path)
+                os.unlink(temp_output_path)
+            except:
+                pass
+            raise
         finally:
-            os.close(temp_fd)
+            # Clean up input file
+            try:
+                os.unlink(temp_input_path)
+            except:
+                pass
     
     async def _audio_to_base64(self, audio_file_path: str) -> str:
         """Convert audio file to base64 string"""

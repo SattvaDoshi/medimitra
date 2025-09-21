@@ -92,7 +92,7 @@ async def websocket_voice_endpoint(websocket: WebSocket, session_id: str):
     
     Message formats:
     - Start session: {"type": "start", "language": "en"}
-    - Audio chunk: {"type": "audio", "data": "base64_audio_data"}
+    - Audio chunk: {"type": "audio", "data": "base64_audio_data"} or {"type": "voice_data", "audio": "base64_audio_data"}
     - End session: {"type": "end"}
     """
     await manager.connect(websocket, session_id)
@@ -100,23 +100,35 @@ async def websocket_voice_endpoint(websocket: WebSocket, session_id: str):
     try:
         while True:
             # Receive message from client
+            logger.info(f"🔄 Waiting for WebSocket message from {session_id}")
             data = await websocket.receive_text()
-            message = json.loads(data)
+            logger.info(f"📥 Received raw data length: {len(data)} chars")
+            
+            try:
+                message = json.loads(data)
+                logger.info(f"📥 Parsed message type: {message.get('type')}")
+            except json.JSONDecodeError as e:
+                logger.error(f"❌ Failed to parse JSON: {e}")
+                continue
             
             message_type = message.get("type")
+            logger.info(f"🔍 Processing message type: {message_type}")
             
             if message_type == "start":
                 # Start voice session
                 language = message.get("language", "en")
+                logger.info(f"🚀 Starting voice session with language: {language}")
                 result = await realtime_agent.start_voice_session(session_id, language)
                 
                 await manager.send_message(session_id, {
                     "type": "session_started",
                     "data": result
                 })
+                logger.info(f"✅ Session started response sent")
                 
                 # Send greeting audio
                 if result.get("greeting"):
+                    logger.info(f"🎵 Generating greeting audio...")
                     greeting_audio = await voice_service.text_to_speech(
                         result["greeting"], 
                         language
@@ -127,6 +139,7 @@ async def websocket_voice_endpoint(websocket: WebSocket, session_id: str):
                     with open(greeting_audio, 'rb') as f:
                         audio_b64 = base64.b64encode(f.read()).decode()
                     
+                    logger.info(f"🎵 Greeting audio generated, size: {len(audio_b64)} chars")
                     await manager.send_message(session_id, {
                         "type": "audio_response",
                         "data": {
@@ -135,60 +148,138 @@ async def websocket_voice_endpoint(websocket: WebSocket, session_id: str):
                             "language": language
                         }
                     })
+                    logger.info(f"✅ Greeting audio sent")
             
-            elif message_type == "audio":
-                # Process audio chunk
+            elif message_type in ["audio", "voice_data"]:
+                # Process audio chunk - support both message formats
+                logger.info(f"🎤 Processing audio message type: {message_type}")
                 import base64
-                audio_data = base64.b64decode(message.get("data", ""))
+                audio_data_b64 = message.get("data") or message.get("audio")
                 
-                result = await realtime_agent.process_audio_chunk(session_id, audio_data)
+                if not audio_data_b64:
+                    logger.warning("⚠️ No audio data received in message")
+                    logger.warning(f"Message keys: {list(message.keys())}")
+                    continue
                 
-                # Send real-time status
-                await manager.send_message(session_id, {
-                    "type": "audio_processed",
-                    "data": result
-                })
+                logger.info(f"🎤 Audio data received, base64 length: {len(audio_data_b64)}")
                 
-                # If we got a complete response, send it
-                if "ai_response" in result:
+                try:
+                    audio_data = base64.b64decode(audio_data_b64)
+                    logger.info(f"🎤 Decoded audio data: {len(audio_data)} bytes")
+                    
+                    result = await realtime_agent.process_audio_chunk(session_id, audio_data)
+                    logger.info(f"🎤 Audio processing result: {list(result.keys())}")
+                    
+                    # Send real-time status
                     await manager.send_message(session_id, {
-                        "type": "conversation_response",
+                        "type": "audio_processed",
+                        "data": result
+                    })
+                    logger.info(f"📤 Audio processed status sent")
+                    
+                    # If we got a complete response, send it
+                    if "ai_response" in result:
+                        logger.info(f"🤖 AI response generated: {result.get('ai_response', '')[:100]}...")
+                        await manager.send_message(session_id, {
+                            "type": "conversation_response",
+                            "data": {
+                                "transcription": result.get("transcription", ""),
+                                "ai_response": result.get("ai_response", ""),
+                                "audio_response": result.get("audio_response", ""),
+                                "emergency_level": result.get("emergency_level", "none"),
+                                "requires_hospital": result.get("requires_hospital", False)
+                            }
+                        })
+                        logger.info(f"✅ Conversation response sent")
+                        
+                except Exception as audio_error:
+                    logger.error(f"❌ Error processing audio: {audio_error}")
+                    await manager.send_message(session_id, {
+                        "type": "error",
+                        "data": {"error": f"Audio processing failed: {str(audio_error)}"}
+                    })
+            
+            elif message_type == "text_message":
+                # Process text message (fallback for when voice isn't working)
+                logger.info(f"💬 Processing text message")
+                text_content = message.get("message", "")
+                language = message.get("language", "en")
+                
+                if not text_content:
+                    logger.warning("⚠️ No text content received")
+                    continue
+                
+                logger.info(f"💬 Text received: {text_content}")
+                
+                try:
+                    # Process as text input instead of audio
+                    result = await realtime_agent.process_text_input(session_id, text_content, language)
+                    logger.info(f"💬 Text processing result: {list(result.keys())}")
+                    
+                    # Send response
+                    await manager.send_message(session_id, {
+                        "type": "conversation_response", 
                         "data": {
-                            "transcription": result.get("transcription", ""),
+                            "transcription": text_content,
                             "ai_response": result.get("ai_response", ""),
                             "audio_response": result.get("audio_response", ""),
                             "emergency_level": result.get("emergency_level", "none"),
                             "requires_hospital": result.get("requires_hospital", False)
                         }
                     })
+                    logger.info(f"✅ Text response sent")
+                    
+                except Exception as text_error:
+                    logger.error(f"❌ Error processing text: {text_error}")
+                    await manager.send_message(session_id, {
+                        "type": "error",
+                        "data": {"error": f"Text processing failed: {str(text_error)}"}
+                    })
             
             elif message_type == "end":
                 # End voice session
+                logger.info(f"🔚 Ending voice session")
                 result = await realtime_agent.end_voice_session(session_id)
                 await manager.send_message(session_id, {
                     "type": "session_ended",
                     "data": result
                 })
+                logger.info(f"✅ Session ended")
                 break
             
             elif message_type == "status":
                 # Get session status
+                logger.info(f"📊 Status request")
                 status = await realtime_agent.get_session_status(session_id)
                 await manager.send_message(session_id, {
                     "type": "status_update",
                     "data": status
                 })
+                logger.info(f"✅ Status sent")
+            
+            else:
+                logger.warning(f"❓ Unknown message type: {message_type}")
+                logger.warning(f"Full message: {message}")
                 
     except WebSocketDisconnect:
         manager.disconnect(session_id)
         await realtime_agent.end_voice_session(session_id)
-        logger.info(f"WebSocket disconnected: {session_id}")
+        logger.info(f"🔌 WebSocket disconnected: {session_id}")
     except Exception as e:
-        logger.error(f"WebSocket error: {e}")
-        await manager.send_message(session_id, {
-            "type": "error",
-            "data": {"error": str(e)}
-        })
+        logger.error(f"❌ WebSocket error: {e}")
+        logger.error(f"Error type: {type(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        try:
+            await manager.send_message(session_id, {
+                "type": "error",
+                "data": {"error": str(e)}
+            })
+        except:
+            pass  # Connection might be closed
+        finally:
+            manager.disconnect(session_id)
+            await realtime_agent.end_voice_session(session_id)
 
 # ===== TRADITIONAL REST API ENDPOINTS (for backward compatibility) =====
 

@@ -9,6 +9,7 @@ from datetime import datetime
 import uuid
 from typing import Optional, Dict, List, Any
 import json
+import logging
 
 # Try to import speech recognition - make it optional
 try:
@@ -28,6 +29,9 @@ from models.schemas import (
     HospitalInfo,
     TranscriptionResponse
 )
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 class VoiceAssistantService:
     def __init__(self):
@@ -211,20 +215,35 @@ class VoiceAssistantService:
             lang_config = self.language_configs.get(language, self.language_configs['en'])
             stt_lang = lang_config['stt']
             
-            with sr.AudioFile(audio_path) as source:
-                audio = self.recognizer.record(source)
-            
-            # Use Google Speech Recognition
-            text = self.recognizer.recognize_google(audio, language=stt_lang)
-            return text
+            # For WebM files, try to handle them as audio files
+            try:
+                with sr.AudioFile(audio_path) as source:
+                    # Adjust for ambient noise
+                    self.recognizer.adjust_for_ambient_noise(source, duration=0.1)
+                    audio = self.recognizer.record(source)
+                
+                # Use Google Speech Recognition
+                text = self.recognizer.recognize_google(audio, language=stt_lang)
+                logger.info(f"Successfully transcribed: {text}")
+                return text
+                
+            except Exception as audio_error:
+                logger.warning(f"Standard audio file processing failed: {audio_error}")
+                # If that fails, maybe the file format is not supported
+                return ""
             
         except sr.UnknownValueError:
+            logger.warning("Could not understand audio - speech was unclear or silent")
             return ""
         except sr.RequestError as e:
-            raise Exception(f"Speech recognition error: {str(e)}")
+            logger.error(f"Speech recognition service error: {str(e)}")
+            return ""
+        except Exception as e:
+            logger.error(f"Unexpected speech recognition error: {str(e)}")
+            return ""
 
-    async def text_to_speech(self, text: str, language: str = "en") -> str:
-        """Convert text to speech and return file path"""
+    async def text_to_speech(self, text: str, language: str = "en") -> Optional[str]:
+        """Convert text to speech and return file path, or None if failed"""
         try:
             lang_config = self.language_configs.get(language, self.language_configs['en'])
             tts_lang = lang_config['tts']
@@ -233,14 +252,60 @@ class VoiceAssistantService:
             filename = f"response_{uuid.uuid4().hex[:8]}.mp3"
             filepath = os.path.join(tempfile.gettempdir(), filename)
             
-            # Create TTS
-            tts = gTTS(text=text, lang=tts_lang, slow=False)
-            tts.save(filepath)
+            logger.info(f"🎵 Creating TTS for text: {text[:50]}... in language: {tts_lang}")
             
-            return filepath
+            # Create TTS with improved retry mechanism and timeout
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    # Create TTS with timeout
+                    tts_task = asyncio.create_task(self._create_tts_with_timeout(text, tts_lang, filepath))
+                    await asyncio.wait_for(tts_task, timeout=10.0)  # 10 second timeout per attempt
+                    
+                    # Verify file was created and has content
+                    if os.path.exists(filepath) and os.path.getsize(filepath) > 0:
+                        logger.info(f"🎵 TTS file created successfully: {filepath} ({os.path.getsize(filepath)} bytes)")
+                        return filepath
+                    else:
+                        raise Exception("TTS file was not created or is empty")
+                        
+                except asyncio.TimeoutError:
+                    logger.warning(f"🎵 TTS attempt {attempt + 1} timed out after 10 seconds")
+                    if os.path.exists(filepath):
+                        try:
+                            os.remove(filepath)
+                        except:
+                            pass
+                except Exception as retry_error:
+                    logger.warning(f"🎵 TTS attempt {attempt + 1} failed: {retry_error}")
+                    if os.path.exists(filepath):
+                        try:
+                            os.remove(filepath)
+                        except:
+                            pass
+                
+                # Wait before retry (exponential backoff)
+                if attempt < max_retries - 1:
+                    wait_time = 1 + (attempt * 2)  # 1s, 3s, 5s
+                    logger.info(f"🎵 Waiting {wait_time}s before retry...")
+                    await asyncio.sleep(wait_time)
+            
+            logger.error(f"🎵 All TTS attempts failed after {max_retries} retries")
+            return None
             
         except Exception as e:
-            raise Exception(f"Text-to-speech error: {str(e)}")
+            logger.error(f"🎵 Unexpected TTS error: {str(e)}")
+            return None
+
+    async def _create_tts_with_timeout(self, text: str, tts_lang: str, filepath: str):
+        """Create TTS file with proper async handling"""
+        def _sync_tts_creation():
+            tts = gTTS(text=text, lang=tts_lang, slow=False)
+            tts.save(filepath)
+        
+        # Run TTS creation in thread pool to avoid blocking
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, _sync_tts_creation)
 
     async def search_hospitals(
         self, 
