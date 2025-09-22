@@ -284,7 +284,16 @@ class RealTimeVoiceAgent:
             
             if not transcription or not transcription.strip():
                 logger.info(f"🎤 No transcription from audio chunk")
-                return None
+                # Return a helpful response indicating we couldn't understand the audio
+                return {
+                    'transcription': "",
+                    'ai_response': "I couldn't hear you clearly. Could you please speak a bit louder or closer to the microphone?",
+                    'audio_response': "",
+                    'emergency_level': "none",
+                    'requires_hospital': False,
+                    'language': session['language'],
+                    'status': 'no_transcription'
+                }
             
             logger.info(f"🎤 Transcribed: {transcription}")
             

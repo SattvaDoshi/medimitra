@@ -207,7 +207,7 @@ class VoiceAssistantService:
         return text_response
 
     async def speech_to_text(self, audio_path: str, language: str = "en") -> str:
-        """Convert speech to text"""
+        """Convert speech to text with multiple fallback methods"""
         if not SPEECH_RECOGNITION_AVAILABLE or not self.recognizer:
             raise Exception("Speech recognition not available. Please install speechrecognition and pyaudio packages.")
         
@@ -222,10 +222,35 @@ class VoiceAssistantService:
                     self.recognizer.adjust_for_ambient_noise(source, duration=0.1)
                     audio = self.recognizer.record(source)
                 
-                # Use Google Speech Recognition
-                text = self.recognizer.recognize_google(audio, language=stt_lang)
-                logger.info(f"Successfully transcribed: {text}")
-                return text
+                # Try multiple recognition services in order of preference
+                recognition_methods = [
+                    # Method 1: Try Google Web Speech API (free, no auth required)
+                    lambda: self.recognizer.recognize_google(audio, language=stt_lang, show_all=False),
+                    # Method 2: Try Sphinx (offline, lower quality but no internet required)
+                    lambda: self.recognizer.recognize_sphinx(audio) if hasattr(self.recognizer, 'recognize_sphinx') else None,
+                ]
+                
+                for i, method in enumerate(recognition_methods):
+                    try:
+                        logger.info(f"🎤 Trying speech recognition method {i+1}...")
+                        text = method()
+                        if text and text.strip():
+                            logger.info(f"✅ Successfully transcribed with method {i+1}: {text}")
+                            return text.strip()
+                        else:
+                            logger.warning(f"⚠️ Method {i+1} returned empty result")
+                    except sr.RequestError as e:
+                        logger.warning(f"⚠️ Method {i+1} failed with request error: {str(e)}")
+                        if "Service Unavailable" in str(e) and i == 0:
+                            logger.info("🔄 Google Speech API unavailable, trying alternative methods...")
+                        continue
+                    except Exception as e:
+                        logger.warning(f"⚠️ Method {i+1} failed with error: {str(e)}")
+                        continue
+                
+                # If all methods failed, return empty string
+                logger.warning("❌ All speech recognition methods failed")
+                return ""
                 
             except Exception as audio_error:
                 logger.warning(f"Standard audio file processing failed: {audio_error}")
@@ -234,9 +259,6 @@ class VoiceAssistantService:
             
         except sr.UnknownValueError:
             logger.warning("Could not understand audio - speech was unclear or silent")
-            return ""
-        except sr.RequestError as e:
-            logger.error(f"Speech recognition service error: {str(e)}")
             return ""
         except Exception as e:
             logger.error(f"Unexpected speech recognition error: {str(e)}")
